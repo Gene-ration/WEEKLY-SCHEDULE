@@ -1,0 +1,39 @@
+{
+    "weekly": [
+        {
+            "day": "MONDAY",
+            "events": [
+                { "date_content": "Flag Ceremony at 7:00 AM - Quadrangle" },
+                { "date_content": "Department Meeting at 10:00 AM - Conference Room" }
+            ]
+        },
+        {
+            "day": "TUESDAY",
+            "events": [
+                { "date_content": "Training Seminar at 8:00 AM - Gymnasium" }
+            ]
+        },
+        {
+            "day": "WEDNESDAY",
+            "events": []
+        },
+        {
+            "day": "THURSDAY",
+            "events": [
+                { "date_content": "General Assembly at 9:00 AM - Main Hall" }
+            ]
+        },
+        {
+            "day": "FRIDAY",
+            "events": [
+                { "date_content": "Weekly Report Submission at 4:00 PM" }
+            ]
+        }
+    ],
+    "upcoming": [
+	    { "date_content": "Annual Sports Fest - March 20, 2026 at Gymnasium"},
+        { "date_content": "Foundation Day - March 10, 2026 at Main Hall" },
+        { "date_content": "Safety Seminar - March 15, 2026 at 9:00 AM" },
+        { "date_content": "Holy Week - March 25, 2026"}
+    ]
+}
