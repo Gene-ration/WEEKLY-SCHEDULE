@@ -1,9 +1,9 @@
 {
     "playlist": [
+        { "name": "Demo video 2", "file": "Demo 2.mp4" },
         { "name": "Briefing Orientation", "url": "http://bma.edu.ph/assets/video/BRIEFING_ORIENTATION.mp4" },
         { "name": "College Registrar", "url": "http://bma.edu.ph/assets/video/COLLEGE_REGISTRAR.mp4" },
         { "name": "Accounting College", "url": "http://bma.edu.ph/assets/video/ACCOUNTING_COLLEGE.mp4" },
-	    { "name": "Demo video 1", "file": "Demo 1.mp4" },
-        { "name": "Demo video 2", "file": "Demo 2.mp4" }
+	    { "name": "Demo video 1", "file": "Demo 1.mp4" }
     ]
 }

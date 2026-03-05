@@ -42,6 +42,7 @@
 <script>
 export default {
     name: 'VideoPlaylist',
+    emits: ['video-ended'],
     data() {
         return {
             playlist: [],
@@ -98,6 +99,7 @@ export default {
         },
         playNext() {
             if (this.playlist.length === 0) return
+            this.$emit('video-ended')
             this.currentVideoIndex = (this.currentVideoIndex + 1) % this.playlist.length
             console.log(`[PlayNext] ${this.currentVideoIndex + 1} / ${this.playlist.length} — ${this.currentFile?.name}`)
         },
