@@ -22,9 +22,8 @@
                     background:#000;
                     display:flex;
                     align-items:center;
-                    justify-content:center;
-                "
-            >
+                    justify-content:center;"
+                >
                 <img
                     src="/Image/BMA March 2026.png"
                     style="max-width:100%; max-height:100%; object-fit:contain;"

@@ -100,8 +100,10 @@ export default {
         playNext() {
             if (this.playlist.length === 0) return
             this.$emit('video-ended')
+            setTimeout(() => {
             this.currentVideoIndex = (this.currentVideoIndex + 1) % this.playlist.length
             console.log(`[PlayNext] ${this.currentVideoIndex + 1} / ${this.playlist.length} — ${this.currentFile?.name}`)
+            }, 3000)
         },
         onTimeUpdate() {
             this.currentTime = this.$refs.videoPlayer?.currentTime || 0
