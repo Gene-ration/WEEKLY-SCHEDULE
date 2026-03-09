@@ -40,6 +40,7 @@
 </template>
 
 <script>
+import api from '@/api.js'; // adjust path
 export default {
     name: 'VideoPlaylist',
     emits: ['video-ended'],
@@ -71,38 +72,30 @@ export default {
         },
     },
     async mounted() {
-        await this.loadPlaylist()
+    await this.loadPlaylist();
+    this.startRefreshInterval();
     },
-    watch: {
-        currentVideoIndex() {
-            this.currentTime = 0
-            this.duration = 0
-            this.$nextTick(() => {
-                this.$refs.videoPlayer?.load()
-                this.$refs.videoPlayer?.play()
-            })
-        }
+    beforeUnmount() {
+        clearInterval(this.refreshTimer);
     },
+
     methods: {
-        async loadPlaylist() {
-            try {
-                const response = await fetch('/data/playlist.json')
-                const data = await response.json()
-                this.playlist = data.playlist || []
-                console.log(`[Playlist] Loaded ${this.playlist.length} video(s)`)
-                this.loading = false
-            } catch (e) {
-                this.error = 'Failed to load playlist.'
-                this.loading = false
-                console.error(e)
-            }
+        startRefreshInterval() {
+            // Calculate interval: 1 hour divided by number of videos
+            const intervalMs = (60 * 60 * 1000) / (this.playlist.length || 1);
+            
+            this.refreshTimer = setInterval(async () => {
+                await this.loadPlaylist();
+                console.log(`[Refresh] Playlist reloaded — ${this.playlist.length} video(s)`);
+            }, intervalMs);
         },
+
         playNext() {
             if (this.playlist.length === 0) return
             this.$emit('video-ended')
             setTimeout(() => {
-            this.currentVideoIndex = (this.currentVideoIndex + 1) % this.playlist.length
-            console.log(`[PlayNext] ${this.currentVideoIndex + 1} / ${this.playlist.length} — ${this.currentFile?.name}`)
+                this.currentVideoIndex = (this.currentVideoIndex + 1) % this.playlist.length
+                console.log(`[PlayNext] ${this.currentVideoIndex + 1} / ${this.playlist.length} — ${this.currentFile?.name}`)
             }, 3000)
         },
         onTimeUpdate() {
