@@ -3,7 +3,7 @@
 
         <!-- Video Player (60%) -->
         <div class="col-md-7 pa-0" style="height:100vh;">
-            <VideoPlaylist @video-ended="showSplash" />
+            <VideoPlaylist @video-ended="showSplash" :playlist="playlist" />
         </div>
 
         <!-- Announcement (40%) -->
@@ -13,21 +13,15 @@
 
         <!-- Splash Image Overlay — covers entire screen -->
         <transition name="fade">
-            <div
-                v-if="splashVisible"
-                style="
+            <div v-if="splashVisible" style="
                     position:fixed;
                     inset:0;
                     z-index:9999;
                     background:#000;
                     display:flex;
                     align-items:center;
-                    justify-content:center;"
-                >
-                <img
-                    src="/Image/BMA March 2026.png"
-                    style="max-width:100%; max-height:100%; object-fit:contain;"
-                />
+                    justify-content:center;">
+                <img src="/Image/BMA March 2026.png" style="max-width:100%; max-height:100%; object-fit:contain;" />
             </div>
         </transition>
 
@@ -37,6 +31,7 @@
 <script>
 import VideoPlaylist from '@/components/VideoPlaylist.vue'
 import Announcement from '@/components/Announcement.vue'
+import api from '../api';
 
 export default {
     name: 'HomePage',
@@ -46,9 +41,14 @@ export default {
     },
     data() {
         return {
+            playlist: [],
+            announcementList: [],
             splashVisible: false,
             splashTimer: null,
         }
+    },
+    async mounted() {
+        this.fetchAnnouncement()
     },
     methods: {
         showSplash() {
@@ -61,7 +61,17 @@ export default {
             // Hide after 3 seconds — adjust as needed
             this.splashTimer = setTimeout(() => {
                 this.splashVisible = false
-            }, 120000)
+            }, 30000)
+        },
+        async fetchAnnouncement() {
+            try {
+                const response = await api.get('/form');
+                const data = response.data;
+                this.playlist = data.links
+                console.log(data)
+            } catch (e) {
+                console.error("Failed to fetch announcement:", e);
+            }
         }
     },
     beforeUnmount() {
@@ -71,7 +81,8 @@ export default {
 </script>
 
 <style>
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     overflow: hidden !important;
@@ -83,6 +94,7 @@ html, body {
 .fade-leave-active {
     transition: opacity 0.5s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;

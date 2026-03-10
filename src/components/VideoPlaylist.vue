@@ -3,17 +3,9 @@
         <div style="height:100%; width:100%; border-radius:16px; overflow:hidden; position:relative;">
 
             <!-- Video Player -->
-            <video
-                v-if="currentVideoSrc && !loading"
-                :key="currentVideoIndex"
-                ref="videoPlayer"
-                style="height:100%; width:100%; object-fit:contain;"
-                autoplay
-                muted
-                @ended="playNext"
-                @timeupdate="onTimeUpdate"
-                @loadedmetadata="onMetadataLoaded"
-            >
+            <video v-if="currentVideoSrc && !loading" :key="currentVideoIndex" ref="videoPlayer"
+                style="height:100%; width:100%; object-fit:contain;" autoplay muted @ended="playNext"
+                @timeupdate="onTimeUpdate" @loadedmetadata="onMetadataLoaded">
                 <source :src="currentVideoSrc" type="video/mp4" />
             </video>
 
@@ -32,7 +24,8 @@
             <!-- Now Playing Info -->
             <div v-if="!loading && currentFile"
                 style="position:absolute; bottom:16px; left:16px; background:rgba(0,0,0,0.6); color:white; padding:6px 12px; border-radius:8px; font-size:0.8rem;">
-                🎬 {{ currentFile.name }} &nbsp;|&nbsp; {{ currentTimeDisplay }} / {{ durationDisplay }} &nbsp;|&nbsp; {{ currentVideoIndex + 1 }} / {{ playlist.length }}
+                🎬 {{ currentFile.name }} &nbsp;|&nbsp; {{ currentTimeDisplay }} / {{ durationDisplay }} &nbsp;|&nbsp;
+                {{ currentVideoIndex + 1 }} / {{ playlist.length }}
             </div>
 
         </div>
@@ -46,7 +39,6 @@ export default {
     emits: ['video-ended'],
     data() {
         return {
-            playlist: [],
             currentVideoIndex: 0,
             loading: true,
             error: null,
@@ -54,15 +46,15 @@ export default {
             duration: 0,
         }
     },
+    props: {
+        playlist: Object
+    },
     computed: {
         currentFile() {
             return this.playlist[this.currentVideoIndex] || null
         },
         currentVideoSrc() {
-            if (!this.currentFile) return null
-            if (this.currentFile.url) return this.currentFile.url
-            if (this.currentFile.file) return `/videos/${this.currentFile.file}`
-            return null
+            return this.currentFile
         },
         currentTimeDisplay() {
             return this.formatTime(this.currentTime)
@@ -72,8 +64,12 @@ export default {
         },
     },
     async mounted() {
-    await this.loadPlaylist();
-    this.startRefreshInterval();
+        console.log(this.playlist)
+        const checkIndex = localStorage.getItem('playIndex')
+        if (checkIndex) {
+            this.currentVideoIndex = checkIndex
+        }
+        this.startRefreshInterval();
     },
     beforeUnmount() {
         clearInterval(this.refreshTimer);
@@ -83,9 +79,8 @@ export default {
         startRefreshInterval() {
             // Calculate interval: 1 hour divided by number of videos
             const intervalMs = (60 * 60 * 1000) / (this.playlist.length || 1);
-            
+
             this.refreshTimer = setInterval(async () => {
-                await this.loadPlaylist();
                 console.log(`[Refresh] Playlist reloaded — ${this.playlist.length} video(s)`);
             }, intervalMs);
         },
