@@ -152,12 +152,10 @@ export default {
     methods: {
         async fetchAnnouncement() {
             try {
-                const response = await api.get('/form');
+                const response = await api.get('/showData');
                 const data = response.data;
 
-                const announcements = data.filter(item => item.type === 'announcement' && item.announcement);
-
-                this.weeklyAnnouncement = announcements.map(item => ({
+                this.weeklyAnnouncement = (data.announcements || []).map(item => ({
                     day: new Date(item.schedule).toLocaleDateString('en-US', {
                         weekday: 'long',
                         month: 'long',
@@ -165,8 +163,8 @@ export default {
                         year: 'numeric'
                     }),
                     events: [{
-                        title: item.announcement.title,
-                        content: item.announcement.content
+                        title: item.title,
+                        content: item.content
                     }]
                 }));
 
@@ -207,7 +205,12 @@ export default {
 }
 
 @keyframes loopScroll {
-    0%   { transform: translateY(0); }
-    100% { transform: translateY(-50%); }
+    0% {
+        transform: translateY(0);
+    }
+
+    100% {
+        transform: translateY(-50%);
+    }
 }
 </style>

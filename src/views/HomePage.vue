@@ -1,17 +1,7 @@
 <template>
     <div class="row ma-0" style="height:100vh; overflow:hidden; width:100%; position:relative;">
 
-        <!-- Video Player (60%) -->
-        <div class="col-md-7 pa-0" style="height:100vh;">
-            <VideoPlaylist @video-ended="showSplash" :playlist="playlist" />
-        </div>
-
-        <!-- Announcement (40%) -->
-        <div class="col-md-5 pa-0" style="height:100vh;">
-            <Announcement />
-        </div>
-
-        <!-- Splash Image Overlay — covers entire screen -->
+        <!-- Splash Image Overlay -->
         <transition name="fade">
             <div v-if="splashVisible" style="
                     position:fixed;
@@ -25,6 +15,15 @@
             </div>
         </transition>
 
+            <!-- Video Player (60%) -->
+            <div class="col-md-7 pa-0" style="height:100vh;">
+                <VideoPlaylist @video-ended="showSplash" :playList="playlist" />
+            </div>
+
+            <!-- Announcement (40%) -->
+            <div class="col-md-5 pa-0" style="height:100vh;">
+                <Announcement />
+            </div>
     </div>
 </template>
 
@@ -43,34 +42,47 @@ export default {
         return {
             playlist: [],
             announcementList: [],
-            splashVisible: false,
+            splashVisible: true,
             splashTimer: null,
         }
     },
     async mounted() {
-        this.fetchAnnouncement()
+        await this.fetchData()
     },
     methods: {
         showSplash() {
-            // Show splash image
             this.splashVisible = true
 
-            // Clear any existing timer
             if (this.splashTimer) clearTimeout(this.splashTimer)
 
-            // Hide after 3 seconds — adjust as needed
             this.splashTimer = setTimeout(() => {
-                this.splashVisible = false
-            }, 30000)
+                if (this.playlist.length || this.announcementList.length) {
+                    this.splashVisible = false
+                }
+            }, 10000)
         },
-        async fetchAnnouncement() {
+
+        async fetchData() {
             try {
-                const response = await api.get('/form');
+                const response = await api.get('/showData');
                 const data = response.data;
-                this.playlist = data.links
-                console.log(data)
+
+                this.playlist = (data.links || []).map(item => ({
+                    title: item.title,
+                    url: item.url
+                }));
+
+                this.announcementList = (data.announcements || []).map(item => ({
+                    title: item.title,
+                    content: item.content
+                }));
+
+                if (this.playlist.length || this.announcementList.length) {
+                    this.splashVisible = false
+                }
+
             } catch (e) {
-                console.error("Failed to fetch announcement:", e);
+                console.error("Failed to fetch data:", e);
             }
         }
     },
@@ -89,7 +101,6 @@ body {
     height: 100%;
 }
 
-/* Fade transition for splash */
 .fade-enter-active,
 .fade-leave-active {
     transition: opacity 0.5s ease;
