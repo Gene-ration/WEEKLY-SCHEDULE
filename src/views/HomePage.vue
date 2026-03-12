@@ -1,5 +1,5 @@
 <template>
-    <div class="row ma-0" style="height:100vh; overflow:hidden; width:100%; position:relative;">
+    <div class="row ma-0" style="height:100vh; overflow:hidden; width:100%; position:relative; background:#fff;">
 
         <!-- Splash Image Overlay -->
         <transition name="fade">
@@ -15,15 +15,16 @@
             </div>
         </transition>
 
-            <!-- Video Player (60%) -->
-            <div class="col-md-7 pa-0" style="height:100vh;">
-                <VideoPlaylist @video-ended="showSplash" :playList="playlist" />
-            </div>
+        <!-- Video Player (60%) — always mounted, just hidden during splash -->
+        <div class="col-md-7 pa-0" style="height:100vh;" v-show="!splashVisible">
+            <VideoPlaylist @video-ended="showSplash" :playList="playlist" />
+        </div>
 
-            <!-- Announcement (40%) -->
-            <div class="col-md-5 pa-0" style="height:100vh;">
-                <Announcement />
-            </div>
+        <!-- Announcement (40%) — receives data from parent -->
+        <div class="col-md-5 pa-0" style="height:100vh;" v-show="!splashVisible">
+            <Announcement :announcementList="announcementList" />
+        </div>
+
     </div>
 </template>
 
@@ -66,6 +67,7 @@ export default {
             try {
                 const response = await api.get('/showData');
                 const data = response.data;
+                console.log('[fetchData] raw announcements:', data.announcements)
 
                 this.playlist = (data.links || []).map(item => ({
                     title: item.title,
@@ -74,7 +76,8 @@ export default {
 
                 this.announcementList = (data.announcements || []).map(item => ({
                     title: item.title,
-                    content: item.content
+                    content: item.content,
+                    schedule: item.schedule
                 }));
 
                 if (this.playlist.length || this.announcementList.length) {
@@ -99,6 +102,7 @@ body {
     padding: 0;
     overflow: hidden !important;
     height: 100%;
+    background: #ffffff;
 }
 
 .fade-enter-active,
