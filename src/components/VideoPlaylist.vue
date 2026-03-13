@@ -10,12 +10,14 @@
                 style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#000;">
                 <p style="color:white;">Loading playlist...</p>
             </div>
+
             <!-- Now Playing Info -->
-            <div v-if="currentFile" style="position:absolute; bottom:16px; left:16px; background:rgba(0,0,0,0.6); color:white; 
-    padding:6px 12px; border-radius:8px; font-size:0.8rem;">
-                🎬 {{ currentFile.title }} &nbsp;|&nbsp;{{ currentTimeDisplay }} / {{ durationDisplay }}
-                    &nbsp;|&nbsp;{{ currentVideoIndex + 1 }} / {{ playList.length }}
+            <div v-if="currentFile" style="position:absolute; bottom:16px; left:16px; background:rgba(0,0,0,0.6); color:white;
+                padding:6px 12px; border-radius:8px; font-size:0.8rem;">
+                🎬 {{ currentFile.title }} &nbsp;|&nbsp; {{ currentTimeDisplay }} / {{ durationDisplay }}
+                &nbsp;|&nbsp; {{ currentVideoIndex + 1 }} / {{ playList.length }}
             </div>
+
         </div>
     </div>
 </template>
@@ -23,6 +25,9 @@
 <script>
 export default {
     name: "VideoPlaylist",
+
+    // Declares the event this component can emit to the parent
+    emits: ['video-ended'],
 
     props: {
         playList: {
@@ -37,14 +42,25 @@ export default {
             player: null,
             loading: true,
             refreshTimer: null,
-            apiReady: false
+            apiReady: false,
+            currentTime: 0,            // current playback position in seconds
+            duration: 0,               // total video duration in seconds
+            timePollingInterval: null, // polls YouTube getCurrentTime every second
         }
     },
 
     computed: {
         currentFile() {
             return this.playList[this.currentVideoIndex] || null
-        }
+        },
+        // Formats currentTime into MM:SS or HH:MM:SS for display
+        currentTimeDisplay() {
+            return this.formatTime(this.currentTime)
+        },
+        // Formats duration into MM:SS or HH:MM:SS for display
+        durationDisplay() {
+            return this.formatTime(this.duration)
+        },
     },
 
     watch: {
@@ -80,6 +96,7 @@ export default {
 
     beforeUnmount() {
         clearInterval(this.refreshTimer)
+        clearInterval(this.timePollingInterval)
 
         if (this.player) {
             this.player.destroy()
@@ -155,8 +172,17 @@ export default {
                 events: {
                     onReady: (event) => {
                         this.loading = false
-                        const duration = event.target.getDuration()
-                        console.log(`[onReady] Player ready — title: "${this.currentFile.title}" | duration: ${duration}s (${Math.floor(duration / 60)}m ${Math.floor(duration % 60)}s)`)
+                        // Get total duration from YouTube player
+                        this.duration = event.target.getDuration()
+                        console.log(`[onReady] Player ready — title: "${this.currentFile.title}" | duration: ${this.duration}s (${Math.floor(this.duration / 60)}m ${Math.floor(this.duration % 60)}s)`)
+
+                        // Poll currentTime every second — YouTube does not fire timeupdate events
+                        clearInterval(this.timePollingInterval)
+                        this.timePollingInterval = setInterval(() => {
+                            if (this.player && this.player.getCurrentTime) {
+                                this.currentTime = Math.floor(this.player.getCurrentTime())
+                            }
+                        }, 1000)
                     },
                     onStateChange: this.onPlayerStateChange
                 }
@@ -180,6 +206,15 @@ export default {
         /* Advances to the next video in the playlist, loops back to start at end */
         playNext() {
             if (!this.playList.length) return
+
+            // Emit to parent (HomePage) — triggers showSplash() via @video-ended
+            this.$emit('video-ended')
+            console.log('[playNext] emitted video-ended to parent')
+
+            // Reset time display and stop polling before switching video
+            this.currentTime = 0
+            this.duration = 0
+            clearInterval(this.timePollingInterval)
 
             const prevIndex = this.currentVideoIndex
             this.currentVideoIndex = (this.currentVideoIndex + 1) % this.playList.length
@@ -210,6 +245,17 @@ export default {
             }
 
             return match[1]
+        },
+
+        /* Formats seconds into MM:SS or HH:MM:SS for the time display */
+        formatTime(seconds) {
+            const s = Math.floor(seconds)
+            const m = Math.floor(s / 60)
+            const h = Math.floor(m / 60)
+            if (h > 0) {
+                return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+            }
+            return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
         },
 
         /* Periodically logs playlist status — interval based on number of videos */

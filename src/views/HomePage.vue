@@ -18,36 +18,17 @@
         <!-- ── Video Player Column (60%) ─────────────────────────────────────── -->
         <div class="col-md-7 pa-0" style="height:100vh; position:relative;" v-show="!splashVisible">
             <VideoPlaylist @video-ended="showSplash" :playList="playlist" />
-
-            <!-- ── Small Splash Preview Image ────────────────────────────────── -->
-            <transition name="preview-fade">
-                <div v-if="showPreview"
-                    style="
-                        position:absolute;
-                        bottom:20px;
-                        right:20px;
-                        z-index:100;
-                        width:160px;
-                        height:90px;
-                        border-radius:10px;
-                        overflow:hidden;
-                        box-shadow:0 4px 16px rgba(0,0,0,0.5);
-                        border:2px solid rgba(255,255,255,0.4);
-                        cursor:pointer;
-                    "
-                    @click="triggerSplash"
-                    title="Click to show splash">
-                    <img src="/Image/BMA March 2026.png"
-                        style="width:100%; height:100%; object-fit:cover;" />
-                </div>
-            </transition>
         </div>
 
-        <!-- ── Announcement Column (40%) ─────────────────────────────────────── -->
-        <div class="col-md-5 pa-0" style="height:100vh;" v-show="!splashVisible">
-            <Announcement :announcementList="announcementList" />
-        </div>
+        <!-- ── Right Column (40%) — Preview + Announcement stacked ──────────── -->
+        <div class="col-md-5 pa-0" style="height:100vh; display:flex; flex-direction:column;" v-show="!splashVisible">
 
+            <!-- ── Announcement Panel ───────────────────────────────────────────── -->
+            <div style="flex-grow:1; overflow:hidden;">
+                <Announcement :announcementList="announcementList" />
+            </div>
+
+        </div>
     </div>
 </template>
 
@@ -78,29 +59,19 @@ export default {
 
         // ── showSplash ────────────────────────────────────────────────────────
         showSplash() {
-            // Hide small preview while full splash is showing
             this.showPreview = false
             this.splashVisible = true
 
-            // Clear any existing timer to avoid double-firing
             if (this.splashTimer) clearTimeout(this.splashTimer)
 
-            // After 10 seconds hide the full splash and restore the preview
             this.splashTimer = setTimeout(() => {
                 if (this.playlist.length || this.announcementList.length) {
                     this.splashVisible = false
 
-                    // Preview stays permanently — no auto-hide timer
                     this.showPreview = true
                 }
-            }, 10000)
+            }, 5000)
         },
-
-        // ── triggerSplash ─────────────────────────────────────────────────────
-        triggerSplash() {
-            this.showSplash()
-        },
-
         // ── fetchData ─────────────────────────────────────────────────────────
         async fetchData() {
             try {
@@ -111,24 +82,20 @@ export default {
                 console.log('[fetchData] raw announcements:', data.announcements)
                 console.log('[fetchData] full response:', data)
 
-                // Map links into playlist format for VideoPlaylist
                 this.playlist = (data.links || []).map(item => ({
                     title: item.title,
                     url: item.url
                 }));
 
-                // Map announcements including schedule for date display
                 this.announcementList = (data.announcements || []).map(item => ({
                     title: item.title,
                     content: item.content,
                     schedule: item.schedule
                 }));
 
-                // Only hide splash if there is content to show
                 if (this.playlist.length || this.announcementList.length) {
                     this.splashVisible = false
 
-                    // Show small preview permanently after first data load
                     this.showPreview = true
                 }
 
