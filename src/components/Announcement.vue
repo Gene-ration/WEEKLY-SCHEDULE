@@ -17,8 +17,6 @@
         <!-- All Content -->
         <div class="d-flex flex-column h-100" style="position:relative; z-index:2;">
 
-            
-
             <!-- ── Splash Preview Image ─────────────────────────────────────────── -->
             <div class="flex-shrink-0" style="width:100%; box-sizing:border-box;">
                 <div style="
@@ -31,7 +29,6 @@
                         style="width:100%; height:100%; object-fit:cover;" />
                 </div>
             </div>
-            
 
             <!-- ── Date & Clock Section ───────────────────────────────────────── -->
             <div class="p-3 flex-shrink-0"
