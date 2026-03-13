@@ -11,13 +11,11 @@
                 <p style="color:white;">Loading playlist...</p>
             </div>
             <!-- Now Playing Info -->
-                <div style="position:absolute; bottom:16px; left:16px; background:rgba(0,0,0,0.6); color:white; 
-                    padding:6px 12px; border-radius:8px; font-size:0.8rem;">
-                    🎬 {{ currentFile.title }} &nbsp;|&nbsp; {{ currentTimeDisplay }} / {{ durationDisplay }}
-                    &nbsp;|&nbsp;
-                    {{ currentVideoIndex + 1 }} / {{ playList.length }}
-                </div>
-
+            <div v-if="currentFile" style="position:absolute; bottom:16px; left:16px; background:rgba(0,0,0,0.6); color:white; 
+    padding:6px 12px; border-radius:8px; font-size:0.8rem;">
+                🎬 {{ currentFile.title }} &nbsp;|&nbsp;{{ currentTimeDisplay }} / {{ durationDisplay }}
+                    &nbsp;|&nbsp;{{ currentVideoIndex + 1 }} / {{ playList.length }}
+            </div>
         </div>
     </div>
 </template>
@@ -151,7 +149,7 @@ export default {
                 videoId: firstVideoId,
                 playerVars: {
                     autoplay: 1,
-                    mute: 1,
+                    /* mute: 1, */
                     origin: window.location.origin
                 },
                 events: {

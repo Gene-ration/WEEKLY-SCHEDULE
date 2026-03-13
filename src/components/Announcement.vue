@@ -122,6 +122,7 @@ export default {
     },
 
     computed: {
+        /*  */
         weeklyAnnouncement() {
             console.log('[Announcement] announcementList received:', this.announcementList)
 
