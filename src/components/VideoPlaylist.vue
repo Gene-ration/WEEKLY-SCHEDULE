@@ -51,13 +51,14 @@ export default {
     data() {
         return {
             currentVideoIndex: 0,
-            player: null,           
+            player: null,
             loading: true,
             refreshTimer: null,
             apiReady: false,
             currentTime: 0,
             duration: 0,
             timePollingInterval: null,
+            lastVideoType: null,
         }
     },
 
@@ -98,8 +99,6 @@ export default {
     },
 
     mounted() {
-        // Restore last played index from localStorage.
-        // Index is clamped inside initPlayer() once playlist length is known.
         const savedIndex = localStorage.getItem("playIndex")
         if (savedIndex !== null) {
             this.currentVideoIndex = Number(savedIndex)
@@ -124,6 +123,7 @@ export default {
     methods: {
 
         // ── Video Type Detection ─────────────────────────────────
+
         detectVideoType(url) {
             if (!url) return null
             const isYT = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)/.test(url)
@@ -138,7 +138,6 @@ export default {
                 return
             }
 
-            // Clamp out-of-range index before accessing currentFile
             if (this.currentVideoIndex >= this.playList.length) {
                 console.warn(`[loadCurrentVideo] Index ${this.currentVideoIndex} out of range — resetting to 0`)
                 this.currentVideoIndex = 0
@@ -146,17 +145,26 @@ export default {
             }
 
             const type = this.detectVideoType(this.currentFile?.url)
-            console.log(`[loadCurrentVideo] type: ${type} | title: "${this.currentFile?.title}"`)
+            console.log(`[loadCurrentVideo] type: ${type} | lastType: ${this.lastVideoType} | title: "${this.currentFile?.title}"`)
 
             if (type === 'youtube') {
+
                 this.stopNativePlayer()
                 this.loadYouTubeAPI()
+
             } else if (type === 'direct') {
-                this.stopYouTubePlayer()
+
+                if (this.lastVideoType === 'youtube') {
+                    this.destroyYouTubePlayer()
+                } else {
+                    this.stopYouTubePlayer()
+                }
                 this.loadDirectVideo()
             } else {
                 console.warn('[loadCurrentVideo] Unknown video type for URL:', this.currentFile?.url)
             }
+
+            this.lastVideoType = type
         },
 
         // ── YouTube Player ───────────────────────────────────────
@@ -195,7 +203,7 @@ export default {
             }
 
             if (this.currentVideoIndex >= this.playList.length) {
-                console.warn(`[initPlayer] Index ${this.currentVideoIndex} out of range (playlist has ${this.playList.length} video(s)) — resetting to 0`)
+                console.warn(`[initPlayer] Index ${this.currentVideoIndex} out of range — resetting to 0`)
                 this.currentVideoIndex = 0
                 localStorage.setItem("playIndex", 0)
             }
@@ -213,6 +221,7 @@ export default {
                 return
             }
 
+            // If player already exists, just swap the video — no need to recreate
             if (this.player) {
                 console.log('[initPlayer] Player already exists — loading new video')
                 this.player.loadVideoById(firstVideoId)
@@ -248,7 +257,25 @@ export default {
         stopYouTubePlayer() {
             clearInterval(this.timePollingInterval)
             if (this.player) {
-                try { this.player.stopVideo() } catch (e) { /* ignore if player not ready */ }
+                try {
+                    this.player.stopVideo()
+                    this.player.mute()  
+                } catch (e) { /* ignore */ }
+            }
+            this.currentTime = 0
+            this.duration = 0
+        },
+
+        destroyYouTubePlayer() {
+            clearInterval(this.timePollingInterval)
+            if (this.player) {
+                try {
+                    this.player.stopVideo()
+                    this.player.destroy()
+                    console.log('[destroyYouTubePlayer] YouTube player fully destroyed')
+                } catch (e) { /* ignore */ }
+                this.player = null
+                this.apiReady = false 
             }
             this.currentTime = 0
             this.duration = 0
@@ -285,13 +312,11 @@ export default {
             this.duration = 0
         },
 
-        // Fired every ~250ms by the native <video> element during playback
         onNativeTimeUpdate() {
             const video = this.$refs.nativePlayer
             if (video) this.currentTime = Math.floor(video.currentTime)
         },
 
-        // Fired once native video metadata (including duration) is available
         onNativeMetadata() {
             const video = this.$refs.nativePlayer
             if (video) {
@@ -353,7 +378,7 @@ export default {
             const m = Math.floor(s / 60)
             const h = Math.floor(m / 60)
             if (h > 0) {
-                return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '00')}:${String(s % 60).padStart(2, '0')}`
+                return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
             }
             return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
         },

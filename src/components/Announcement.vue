@@ -33,13 +33,13 @@
             <!-- ── Date & Clock Section ───────────────────────────────────────── -->
             <div class="p-3 flex-shrink-0"
                 style="background-color:rgba(255,255,255,0.9); border-radius:0 0 16px 16px; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
-                <p class="h5 fw-bold mb-0 float-end text-green">{{ timeStatus }}</p>
-                <p class="h5 fw-bold mb-0 text-green">{{ formattedDate }}</p>
-                <h2 class="display-4 fw-bold mb-0 text-left text-green">{{ formattedTime }}</h2>
+                <p class="h5 fw-bold mb-0 float-end" style="color: #00611E">{{ timeStatus }}</p>
+                <p class="h5 fw-bold mb-0" style="color: #00611E">{{ formattedDate }}</p>
+                <h2 class="display-4 fw-bold mb-0 text-left" style="color: #00611E">{{ formattedTime }}</h2>
             </div>
 
             <!-- ── Announcements Label ────────────────────────────────────────── -->
-            <p class="container fw-bold mb-0 px-3" style="font-size:xx-large; color:darkgreen;">Announcements</p>
+            <p class="container fw-bold mb-0 px-3" style="font-size:xx-large; color: #00611E;">Announcements</p>
 
             <!-- ── Announcements List ───────────────────────────────────────────── -->
             <div ref="scrollWrapper" class="p-3 flex-grow-1" style="overflow:hidden; position:relative;">
