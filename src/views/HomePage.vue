@@ -85,7 +85,7 @@ export default {
                 console.log('[fetchData] raw splash:', data.splash)
                 console.log('[fetchData] full response:', data)
 
-                this.splashImage = data.splash?.url || null
+                this.splashImage = data.monthlyPoster?.url || null
 
                 this.playlist = (data.links || []).map(item => ({
                     title: item.title,

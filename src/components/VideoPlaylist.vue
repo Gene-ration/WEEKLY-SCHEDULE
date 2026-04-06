@@ -2,8 +2,19 @@
     <div style="height:100vh; width:100%; background:#000; padding:12px; box-sizing:border-box;">
         <div style="height:100%; width:100%; border-radius:16px; overflow:hidden; position:relative;">
 
-            <!-- Always in DOM so YouTube can mount on it -->
-            <div id="yt-player" style="height:100%; width:100%;"></div>
+            <!-- ── YouTube Player — shown only when current video is a YouTube URL ── -->
+            <div v-show="isYouTube" id="yt-player" style="height:100%; width:100%;"></div>
+
+            <!-- ── Native Player — shown for direct mp4 / webm / any non-YouTube URL ── -->
+            <video
+                v-show="!isYouTube"
+                ref="nativePlayer"
+                style="height:100%; width:100%; object-fit:contain; background:#000;"
+                autoplay
+                @ended="playNext"
+                @timeupdate="onNativeTimeUpdate"
+                @loadedmetadata="onNativeMetadata"
+            ></video>
 
             <!-- Loading overlay on top -->
             <div v-if="loading"
@@ -16,6 +27,8 @@
                 padding:6px 12px; border-radius:8px; font-size:0.8rem;">
                 🎬 {{ currentFile.title }} &nbsp;|&nbsp; {{ currentTimeDisplay }} / {{ durationDisplay }}
                 &nbsp;|&nbsp; {{ currentVideoIndex + 1 }} / {{ playList.length }}
+                &nbsp;|&nbsp;
+                <span style="font-size:0.7rem; opacity:0.8;">{{ isYouTube ? '▶ YouTube' : '▶ Direct' }}</span>
             </div>
 
         </div>
@@ -38,7 +51,7 @@ export default {
     data() {
         return {
             currentVideoIndex: 0,
-            player: null,
+            player: null,           
             loading: true,
             refreshTimer: null,
             apiReady: false,
@@ -52,6 +65,13 @@ export default {
         currentFile() {
             return this.playList[this.currentVideoIndex] || null
         },
+
+        isYouTube() {
+            return this.currentFile
+                ? this.detectVideoType(this.currentFile.url) === 'youtube'
+                : false
+        },
+
         currentTimeDisplay() {
             return this.formatTime(this.currentTime)
         },
@@ -66,9 +86,9 @@ export default {
             handler(newVal) {
                 console.log('[playList watcher] received:', newVal)
                 if (newVal && newVal.length > 0) {
-                    console.log(`[playList watcher] ${newVal.length} video(s) loaded — starting YouTube API`)
+                    console.log(`[playList watcher] ${newVal.length} video(s) loaded — starting player`)
                     this.$nextTick(() => {
-                        this.loadYouTubeAPI()
+                        this.loadCurrentVideo()
                     })
                 } else {
                     console.warn('[playList watcher] Playlist is empty or not yet loaded')
@@ -103,7 +123,43 @@ export default {
 
     methods: {
 
-        // ── YouTube API ──────────────────────────────────────────
+        // ── Video Type Detection ─────────────────────────────────
+        detectVideoType(url) {
+            if (!url) return null
+            const isYT = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)/.test(url)
+            return isYT ? 'youtube' : 'direct'
+        },
+
+        // ── Main Entry Point ─────────────────────────────────────
+
+        loadCurrentVideo() {
+            if (!this.playList || this.playList.length === 0) {
+                console.warn('[loadCurrentVideo] Playlist is empty.')
+                return
+            }
+
+            // Clamp out-of-range index before accessing currentFile
+            if (this.currentVideoIndex >= this.playList.length) {
+                console.warn(`[loadCurrentVideo] Index ${this.currentVideoIndex} out of range — resetting to 0`)
+                this.currentVideoIndex = 0
+                localStorage.setItem("playIndex", 0)
+            }
+
+            const type = this.detectVideoType(this.currentFile?.url)
+            console.log(`[loadCurrentVideo] type: ${type} | title: "${this.currentFile?.title}"`)
+
+            if (type === 'youtube') {
+                this.stopNativePlayer()
+                this.loadYouTubeAPI()
+            } else if (type === 'direct') {
+                this.stopYouTubePlayer()
+                this.loadDirectVideo()
+            } else {
+                console.warn('[loadCurrentVideo] Unknown video type for URL:', this.currentFile?.url)
+            }
+        },
+
+        // ── YouTube Player ───────────────────────────────────────
 
         loadYouTubeAPI() {
             if (!this.playList || this.playList.length === 0) {
@@ -125,8 +181,6 @@ export default {
             tag.src = "https://www.youtube.com/iframe_api"
             document.body.appendChild(tag)
 
-            // ✅ Arrow function keeps `this` as the live Vue instance —
-            //    no stale closure issue unlike using `const self = this`
             window.onYouTubeIframeAPIReady = () => {
                 console.log('[onYouTubeIframeAPIReady] YouTube API is ready')
                 this.apiReady = true
@@ -140,9 +194,6 @@ export default {
                 return
             }
 
-            // ✅ Clamp index HERE, at the last moment before currentFile is accessed.
-            //    This is the only reliable place — any earlier and the playlist
-            //    may not have arrived yet, causing the clamp to be skipped.
             if (this.currentVideoIndex >= this.playList.length) {
                 console.warn(`[initPlayer] Index ${this.currentVideoIndex} out of range (playlist has ${this.playList.length} video(s)) — resetting to 0`)
                 this.currentVideoIndex = 0
@@ -154,16 +205,18 @@ export default {
                 return
             }
 
-            if (this.player) {
-                console.log('[initPlayer] Player already exists — skipping duplicate init')
-                return
-            }
-
             const firstVideoId = this.extractVideoId(this.currentFile.url)
             console.log(`[initPlayer] Starting video — title: "${this.currentFile.title}" | id: ${firstVideoId}`)
 
             if (!firstVideoId) {
                 console.warn("[initPlayer] Invalid YouTube URL:", this.currentFile.url)
+                return
+            }
+
+            if (this.player) {
+                console.log('[initPlayer] Player already exists — loading new video')
+                this.player.loadVideoById(firstVideoId)
+                this.loading = false
                 return
             }
 
@@ -190,6 +243,61 @@ export default {
                     onStateChange: this.onPlayerStateChange
                 }
             })
+        },
+
+        stopYouTubePlayer() {
+            clearInterval(this.timePollingInterval)
+            if (this.player) {
+                try { this.player.stopVideo() } catch (e) { /* ignore if player not ready */ }
+            }
+            this.currentTime = 0
+            this.duration = 0
+        },
+
+        // ── Direct / Native Video Player ─────────────────────────
+
+        loadDirectVideo() {
+            this.$nextTick(() => {
+                const video = this.$refs.nativePlayer
+                if (!video) {
+                    console.warn('[loadDirectVideo] Native player ref not found')
+                    return
+                }
+
+                console.log(`[loadDirectVideo] Loading: ${this.currentFile.url}`)
+                video.src = this.currentFile.url
+                video.load()
+                video.play().catch(err => {
+                    console.warn('[loadDirectVideo] Autoplay blocked:', err)
+                })
+
+                this.loading = false
+            })
+        },
+
+        stopNativePlayer() {
+            const video = this.$refs.nativePlayer
+            if (video) {
+                video.pause()
+                video.src = ''
+            }
+            this.currentTime = 0
+            this.duration = 0
+        },
+
+        // Fired every ~250ms by the native <video> element during playback
+        onNativeTimeUpdate() {
+            const video = this.$refs.nativePlayer
+            if (video) this.currentTime = Math.floor(video.currentTime)
+        },
+
+        // Fired once native video metadata (including duration) is available
+        onNativeMetadata() {
+            const video = this.$refs.nativePlayer
+            if (video) {
+                this.duration = Math.floor(video.duration)
+                console.log(`[Native onMetadata] title: "${this.currentFile?.title}" | duration: ${this.duration}s`)
+            }
         },
 
         // ── Player Events ────────────────────────────────────────
@@ -219,14 +327,9 @@ export default {
             this.currentVideoIndex = (this.currentVideoIndex + 1) % this.playList.length
             localStorage.setItem("playIndex", this.currentVideoIndex)
 
-            const nextVideoId = this.extractVideoId(this.currentFile.url)
-            console.log(`[playNext] ${prevIndex + 1} → ${this.currentVideoIndex + 1} of ${this.playList.length} | title: "${this.currentFile.title}" | id: ${nextVideoId}`)
+            console.log(`[playNext] ${prevIndex + 1} → ${this.currentVideoIndex + 1} of ${this.playList.length} | title: "${this.currentFile?.title}"`)
 
-            if (this.player && nextVideoId) {
-                this.player.loadVideoById(nextVideoId)
-            } else {
-                console.warn('[playNext] Could not load next video — player or videoId missing')
-            }
+            this.loadCurrentVideo()
         },
 
         // ── Helpers ──────────────────────────────────────────────
@@ -250,7 +353,7 @@ export default {
             const m = Math.floor(s / 60)
             const h = Math.floor(m / 60)
             if (h > 0) {
-                return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+                return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '00')}:${String(s % 60).padStart(2, '0')}`
             }
             return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
         },
