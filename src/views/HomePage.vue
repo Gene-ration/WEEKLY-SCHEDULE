@@ -82,10 +82,10 @@ export default {
 
                 console.log('[fetchData] raw links:', data.links)
                 console.log('[fetchData] raw announcements:', data.announcements)
-                console.log('[fetchData] raw splash:', data.splash)
+                console.log('[fetchData] raw monthlyPoster:', data.monthlyPosters)
                 console.log('[fetchData] full response:', data)
 
-                this.splashImage = data.monthlyPoster?.url || null
+                this.splashImage = data.monthlyPosters?.url || null
 
                 this.playlist = (data.links || []).map(item => ({
                     title: item.title,
