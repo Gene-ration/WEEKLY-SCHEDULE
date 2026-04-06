@@ -11,7 +11,7 @@
                     display:flex;
                     align-items:center;
                     justify-content:center;">
-                <img src="/Image/BMA March 2026.png" style="max-width:100%; max-height:100%; object-fit:contain;" />
+                <img v-if="splashImage" :src="splashImage" style="max-width:100%; max-height:100%; object-fit:contain;" />
             </div>
         </transition>
 
@@ -20,12 +20,13 @@
             <VideoPlaylist @video-ended="showSplash" :playList="playlist" />
         </div>
 
-        <!-- ── Right Column (40%) — Preview + Announcement stacked ──────────── -->
+        <!-- ── Right Column (40%) — Announcement ─────────────────────────────── -->
         <div class="col-md-5 pa-0" style="height:100vh; display:flex; flex-direction:column;" v-show="!splashVisible">
 
-            <!-- ── Announcement Panel ───────────────────────────────────────────── -->
+            <!-- ── Announcemevvvvvdnt Panel ───────────────────────────────────────────── -->
             <div style="flex-grow:1; overflow:hidden;">
-                <Announcement :announcementList="announcementList" />
+                <!-- ✅ Pass splashImage down to Announcement for the preview at the top -->
+                <Announcement :announcementList="announcementList" :splashImage="splashImage" />
             </div>
 
         </div>
@@ -47,9 +48,10 @@ export default {
         return {
             playlist: [],
             announcementList: [],
-            splashVisible: true,  // controls full screen splash visibility
-            splashTimer: null,    // timer that auto-hides the full screen splash
-            showPreview: false,   // controls small preview image visibility
+            splashImage: null,        
+            splashVisible: true,
+            splashTimer: null,
+            showPreview: false,
         }
     },
     async mounted() {
@@ -67,11 +69,11 @@ export default {
             this.splashTimer = setTimeout(() => {
                 if (this.playlist.length || this.announcementList.length) {
                     this.splashVisible = false
-
                     this.showPreview = true
                 }
             }, 5000)
         },
+
         // ── fetchData ─────────────────────────────────────────────────────────
         async fetchData() {
             try {
@@ -80,7 +82,10 @@ export default {
 
                 console.log('[fetchData] raw links:', data.links)
                 console.log('[fetchData] raw announcements:', data.announcements)
+                console.log('[fetchData] raw splash:', data.splash)
                 console.log('[fetchData] full response:', data)
+
+                this.splashImage = data.splash?.url || null
 
                 this.playlist = (data.links || []).map(item => ({
                     title: item.title,
@@ -95,7 +100,6 @@ export default {
 
                 if (this.playlist.length || this.announcementList.length) {
                     this.splashVisible = false
-
                     this.showPreview = true
                 }
 
@@ -106,7 +110,6 @@ export default {
     },
 
     beforeUnmount() {
-        // Clean up timer to prevent memory leaks
         if (this.splashTimer) clearTimeout(this.splashTimer)
     }
 }
@@ -122,7 +125,6 @@ body {
     background: #ffffff;
 }
 
-/* Full screen splash — simple opacity fade in/out */
 .fade-enter-active,
 .fade-leave-active {
     transition: opacity 0.5s ease;
@@ -132,7 +134,6 @@ body {
     opacity: 0;
 }
 
-/* Small preview image — fades in with a subtle scale effect */
 .preview-fade-enter-active,
 .preview-fade-leave-active {
     transition: opacity 0.4s ease, transform 0.4s ease;

@@ -18,14 +18,14 @@
         <div class="d-flex flex-column h-100" style="position:relative; z-index:2;">
 
             <!-- ── Splash Preview Image ─────────────────────────────────────────── -->
-            <div class="flex-shrink-0" style="width:100%; box-sizing:border-box;">
+            <div v-if="splashImage" class="flex-shrink-0" style="width:100%; box-sizing:border-box;">
                 <div style="
                         width:100%;
                         height:100%;
                         overflow:hidden;
                         box-shadow:0 4px 16px rgba(0,0,0,0.2);
                     ">
-                    <img src="/Image/BMA March 2026.png"
+                    <img :src="splashImage"
                         style="width:100%; height:100%; object-fit:cover;" />
                 </div>
             </div>
@@ -123,6 +123,10 @@ export default {
         announcementList: {
             type: Array,
             default: () => []
+        },
+        splashImage: {
+        type: String,
+        default: null
         }
     },
 
