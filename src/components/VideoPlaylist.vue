@@ -26,7 +26,6 @@
 export default {
     name: "VideoPlaylist",
 
-    // Declares the event this component can emit to the parent
     emits: ['video-ended'],
 
     props: {
@@ -43,9 +42,9 @@ export default {
             loading: true,
             refreshTimer: null,
             apiReady: false,
-            currentTime: 0,            // current playback position in seconds
-            duration: 0,               // total video duration in seconds
-            timePollingInterval: null, // polls YouTube getCurrentTime every second
+            currentTime: 0,
+            duration: 0,
+            timePollingInterval: null,
         }
     },
 
@@ -53,18 +52,15 @@ export default {
         currentFile() {
             return this.playList[this.currentVideoIndex] || null
         },
-        // Formats currentTime into MM:SS or HH:MM:SS for display
         currentTimeDisplay() {
             return this.formatTime(this.currentTime)
         },
-        // Formats duration into MM:SS or HH:MM:SS for display
         durationDisplay() {
             return this.formatTime(this.duration)
         },
     },
 
     watch: {
-        // Fires immediately on mount and again whenever playList changes
         playList: {
             immediate: true,
             handler(newVal) {
@@ -82,9 +78,10 @@ export default {
     },
 
     mounted() {
-        // Restore last played index from localStorage if available
+        // Restore last played index from localStorage.
+        // Index is clamped inside initPlayer() once playlist length is known.
         const savedIndex = localStorage.getItem("playIndex")
-        if (savedIndex) {
+        if (savedIndex !== null) {
             this.currentVideoIndex = Number(savedIndex)
             console.log(`[Mounted] Restored index from localStorage: ${savedIndex}`)
         } else {
@@ -108,7 +105,6 @@ export default {
 
         // ── YouTube API ──────────────────────────────────────────
 
-        /* Loads the YouTube IFrame API script if not already loaded */
         loadYouTubeAPI() {
             if (!this.playList || this.playList.length === 0) {
                 console.warn('[loadYouTubeAPI] Playlist is empty.')
@@ -117,7 +113,6 @@ export default {
 
             console.log(`[loadYouTubeAPI] ${this.playList.length} video(s) in playlist`, this.playList)
 
-            // If API already loaded, go straight to init
             if (window.YT && window.YT.Player) {
                 console.log('[loadYouTubeAPI] YouTube API already loaded — initializing player')
                 this.apiReady = true
@@ -125,13 +120,13 @@ export default {
                 return
             }
 
-            // Inject YouTube IFrame API script into the page
             console.log('[loadYouTubeAPI] Injecting YouTube IFrame API script...')
             const tag = document.createElement("script")
             tag.src = "https://www.youtube.com/iframe_api"
             document.body.appendChild(tag)
 
-            // Callback fired by YouTube when API is fully ready
+            // ✅ Arrow function keeps `this` as the live Vue instance —
+            //    no stale closure issue unlike using `const self = this`
             window.onYouTubeIframeAPIReady = () => {
                 console.log('[onYouTubeIframeAPIReady] YouTube API is ready')
                 this.apiReady = true
@@ -139,16 +134,26 @@ export default {
             }
         },
 
-        /* Initializes the YouTube player on the #yt-player div */
         initPlayer() {
             if (!this.apiReady) {
                 console.warn('[initPlayer] API not ready yet — aborting')
                 return
             }
+
+            // ✅ Clamp index HERE, at the last moment before currentFile is accessed.
+            //    This is the only reliable place — any earlier and the playlist
+            //    may not have arrived yet, causing the clamp to be skipped.
+            if (this.currentVideoIndex >= this.playList.length) {
+                console.warn(`[initPlayer] Index ${this.currentVideoIndex} out of range (playlist has ${this.playList.length} video(s)) — resetting to 0`)
+                this.currentVideoIndex = 0
+                localStorage.setItem("playIndex", 0)
+            }
+
             if (!this.currentFile || !this.currentFile.url) {
                 console.warn("[initPlayer] No video found in playlist.")
                 return
             }
+
             if (this.player) {
                 console.log('[initPlayer] Player already exists — skipping duplicate init')
                 return
@@ -172,11 +177,9 @@ export default {
                 events: {
                     onReady: (event) => {
                         this.loading = false
-                        // Get total duration from YouTube player
                         this.duration = event.target.getDuration()
                         console.log(`[onReady] Player ready — title: "${this.currentFile.title}" | duration: ${this.duration}s (${Math.floor(this.duration / 60)}m ${Math.floor(this.duration % 60)}s)`)
 
-                        // Poll currentTime every second — YouTube does not fire timeupdate events
                         clearInterval(this.timePollingInterval)
                         this.timePollingInterval = setInterval(() => {
                             if (this.player && this.player.getCurrentTime) {
@@ -191,7 +194,6 @@ export default {
 
         // ── Player Events ────────────────────────────────────────
 
-        /* Fires when YouTube player state changes (playing, paused, ended, etc.) */
         onPlayerStateChange(event) {
             const states = { '-1': 'unstarted', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'cued' }
             console.log(`[onStateChange] State changed: ${states[event.data] || event.data}`)
@@ -203,15 +205,12 @@ export default {
 
         // ── Playlist Controls ────────────────────────────────────
 
-        /* Advances to the next video in the playlist, loops back to start at end */
         playNext() {
             if (!this.playList.length) return
 
-            // Emit to parent (HomePage) — triggers showSplash() via @video-ended
             this.$emit('video-ended')
             console.log('[playNext] emitted video-ended to parent')
 
-            // Reset time display and stop polling before switching video
             this.currentTime = 0
             this.duration = 0
             clearInterval(this.timePollingInterval)
@@ -232,7 +231,6 @@ export default {
 
         // ── Helpers ──────────────────────────────────────────────
 
-        /* Extracts the YouTube video ID from various URL formats */
         extractVideoId(url) {
             if (!url) return null
 
@@ -247,7 +245,6 @@ export default {
             return match[1]
         },
 
-        /* Formats seconds into MM:SS or HH:MM:SS for the time display */
         formatTime(seconds) {
             const s = Math.floor(seconds)
             const m = Math.floor(s / 60)
@@ -258,7 +255,6 @@ export default {
             return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
         },
 
-        /* Periodically logs playlist status — interval based on number of videos */
         startRefreshInterval() {
             const intervalMs = (60 * 60 * 1000) / (this.playList.length || 1)
             console.log(`[startRefreshInterval] Refresh interval set to every ${Math.round(intervalMs / 1000 / 60)} min`)
