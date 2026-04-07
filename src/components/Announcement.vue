@@ -1,117 +1,93 @@
 <template>
-    <div class="d-flex flex-column" style="height:100vh; overflow:hidden; position:relative;">
+    <div class="announcement-container">
 
-        <!-- Background Image -->
-        <div style="
-            position:absolute;
-            inset:0;
-            background-image: url('/Image/bma-logo.png');
-            background-size: 400px;
-            background-position: center center;
-            background-repeat: no-repeat;
-        "></div>
-
-        <!-- Background Overlay -->
-        <div style="position:absolute; inset:0; background-color:rgba(255,255,255,0.8); z-index:1;"></div>
-
-        <!-- All Content -->
-        <div class="d-flex flex-column h-100" style="position:relative; z-index:2;">
-
-            <!-- ── Splash Preview Image ─────────────────────────────────────────── -->
-            <div v-if="splashImage" class="flex-shrink-0" style="width:100%; box-sizing:border-box;">
-                <div style="
-                        width:100%;
-                        height:100%;
-                        overflow:hidden;
-                        box-shadow:0 4px 16px rgba(0,0,0,0.2);
-                    ">
-                    <img :src="splashImage"
-                        style="width:100%; height:100%; object-fit:cover;" />
-                </div>
-            </div>
-
-            <!-- ── Date & Clock Section ───────────────────────────────────────── -->
-            <div class="p-3 flex-shrink-0"
-                style="background-color:rgba(255,255,255,0.9); border-radius:0 0 16px 16px; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
-                <p class="h5 fw-bold mb-0 float-end" style="color: #00611E">{{ timeStatus }}</p>
-                <p class="h5 fw-bold mb-0" style="color: #00611E">{{ formattedDate }}</p>
-                <h2 class="display-4 fw-bold mb-0 text-left" style="color: #00611E">{{ formattedTime }}</h2>
-            </div>
-
-            <!-- ── Announcements Label ────────────────────────────────────────── -->
-            <p class="container fw-bold mb-0 px-3" style="font-size:xx-large; color: #00611E;">Announcements</p>
-
-            <!-- ── Announcements List ───────────────────────────────────────────── -->
-            <div ref="scrollWrapper" class="p-3 flex-grow-1" style="overflow:hidden; position:relative;">
-
-                <!-- scroll-track animation only applied when content overflows -->
-                <div ref="scrollContent" :class="shouldScroll ? 'scroll-track' : ''">
-
-                    <!-- Panel 1 — ref="panel" wraps everything so measurement is accurate -->
-                    <div ref="panel" class="scroll-panel">
-
-                        <div v-if="weeklyAnnouncement.length">
-                            <div v-for="(day, index) in weeklyAnnouncement" :key="index" class="mb-3">
-                                <p v-if="day.day" class="fw-bold mb-1"
-                                    style="font-size:0.85rem; letter-spacing:1px; color:#1a1a1a;">
-                                    {{ day.day }}
-                                </p>
-                                <template v-if="day.events && day.events.length">
-                                    <div v-for="(event, eIndex) in day.events" :key="eIndex"
-                                        class="schedule-item p-2 mb-1 rounded">
-                                        <p class="fw-semibold mb-0" style="color:#2a2a2a;">{{ event.title }}</p>
-                                        <p class="small mb-0" style="color:#333;">{{ event.content }}</p>
-                                    </div>
-                                </template>
-                                <div v-else>
-                                    <p class="small ms-1" style="color:#444;">No events</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Shown only when announcementList prop is empty -->
-                        <div v-else>
-                            <p class="small" style="color:#444;">No announcements available.</p>
-                        </div>
-
-                        <div v-if="upcomingEvents.length">
-                            <p class="fw-bold mb-3 mt-2" style="font-size:xx-large; color:#1a1a1a;">Upcoming Events</p>
-                            <div v-for="(event, index) in upcomingEvents" :key="index"
-                                class="schedule-item p-2 mb-2 rounded">
-                                <p class="fw-semibold mb-0" style="color:#2a2a2a;">{{ event.title }}</p>
-                                <p class="small mb-0" style="color:#333;">{{ event.content }}</p>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Panel 2 — duplicate for seamless loop, only when scrolling -->
-                    <div v-if="shouldScroll" class="scroll-panel" aria-hidden="true">
-
-                        <div v-if="weeklyAnnouncement.length">
-                            <div v-for="(day, index) in weeklyAnnouncement" :key="'b' + index" class="mb-3">
-                                <p v-if="day.day" class="fw-bold mb-1"
-                                    style="font-size:0.85rem; letter-spacing:1px; color:#1a1a1a;">
-                                    {{ day.day }}
-                                </p>
-                                <template v-if="day.events && day.events.length">
-                                    <div v-for="(event, eIndex) in day.events" :key="'b' + eIndex"
-                                        class="schedule-item p-2 mb-1 rounded">
-                                        <p class="fw-semibold mb-0" style="color:#2a2a2a;">{{ event.title }}</p>
-                                        <p class="small mb-0" style="color:#333;">{{ event.content }}</p>
-                                    </div>
-                                </template>
-                                <div v-else>
-                                    <p class="small ms-1" style="color:#444;">No events</p>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </div>
+        <!-- ── Monthly Poster  ────────────────────── -->
+        <div class="poster-section">
+            <img v-if="splashImage" :src="splashImage" class="poster-image" />
+            <!-- Fallback placeholder if no image -->
+            <div v-else class="poster-fallback">
+                <p class="fallback-text">No poster available</p>
             </div>
         </div>
+
+        <!-- ── Divider ────────────────────────────────────────────────────────── -->
+        <div class="section-divider"></div>
+
+        <!-- ── Announcements Label ────────────────────────────────────────────── -->
+        <div class="label-wrapper">
+            <p class="main-title">ANNOUNCEMENTS</p>
+        </div>
+
+        <!-- ── Announcements List (scrolls if overflow) ───────────────────────── -->
+        <div ref="scrollWrapper" class="scroll-wrapper">
+
+            <div ref="scrollContent" :class="shouldScroll ? 'scroll-track' : ''">
+
+                <!-- Panel 1 -->
+                <div ref="panel" class="scroll-panel">
+
+                    <div v-if="weeklyAnnouncement.length">
+                        <div v-for="(day, index) in weeklyAnnouncement" :key="index" class="day-group">
+                            <p v-if="day.day" class="day-label">{{ day.day }}</p>
+                            <template v-if="day.events && day.events.length">
+                                <div v-for="(event, eIndex) in day.events" :key="eIndex" class="schedule-item">
+                                    <p class="event-title">{{ event.title }}</p>
+                                    <p class="event-content">{{ event.content }}</p>
+                                </div>
+                            </template>
+                            <div v-else>
+                                <p class="no-events-text">No events</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else>
+                        <p class="empty-state-text">No announcements available.</p>
+                    </div>
+
+                    <div v-if="upcomingEvents.length" class="upcoming-section">
+                        <p class="upcoming-title">Upcoming Events</p>
+                        <div v-for="(event, index) in upcomingEvents" :key="index" class="schedule-item">
+                            <p class="event-title">{{ event.title }}</p>
+                            <p class="event-content">{{ event.content }}</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Panel 2 — duplicate for seamless loop -->
+                <div v-if="shouldScroll" class="scroll-panel" aria-hidden="true">
+                    <div v-if="weeklyAnnouncement.length">
+                        <div v-for="(day, index) in weeklyAnnouncement" :key="index" class="day-group">
+                            <p v-if="day.day" class="day-label">{{ day.day }}</p>
+                            <template v-if="day.events && day.events.length">
+                                <div v-for="(event, eIndex) in day.events" :key="eIndex" class="schedule-item">
+                                    <p class="event-title">{{ event.title }}</p>
+                                    <p class="event-content">{{ event.content }}</p>
+                                </div>
+                            </template>
+                            <div v-else>
+                                <p class="no-events-text">No events</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else>
+                        <p class="empty-state-text">No announcements available.</p>
+                    </div>
+
+                    <div v-if="upcomingEvents.length" class="upcoming-section">
+                        <p class="upcoming-title">Upcoming Events</p>
+                        <div v-for="(event, index) in upcomingEvents" :key="index" class="schedule-item">
+                            <p class="event-title">{{ event.title }}</p>
+                            <p class="event-content">{{ event.content }}</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 </template>
 
@@ -125,15 +101,13 @@ export default {
             default: () => []
         },
         splashImage: {
-        type: String,
-        default: null
+            type: String,
+            default: null
         }
     },
 
     data() {
         return {
-            currentTime: new Date(),
-            timer: null,
             upcomingEvents: [],
             shouldScroll: false,
         }
@@ -154,7 +128,6 @@ export default {
                 const isValidDate = item.schedule && !isNaN(date.getTime())
 
                 return {
-                    // Show formatted date if valid, hide if missing/invalid
                     day: isValidDate
                         ? date.toLocaleDateString('en-US', {
                             weekday: 'long',
@@ -163,55 +136,23 @@ export default {
                             year: 'numeric'
                         })
                         : null,
-                    events: [{
-                        title: item.title,
-                        content: item.content
-                    }]
+                    events: [{ title: item.title, content: item.content }]
                 }
             })
         },
-        formattedDate() {
-            const options = { month: 'long', day: 'numeric', year: 'numeric' }
-            return this.currentTime.toLocaleDateString('en-US', options)
-        },
-        formattedTime() {
-            const options = { hour: '2-digit', minute: '2-digit', hour12: true }
-            return this.currentTime.toLocaleTimeString('en-US', options)
-        },
-        timeStatus() {
-            const hour = this.currentTime.getHours()
-            if (hour < 12) return 'GOOD MORNING'
-            if (hour < 18) return 'GOOD AFTERNOON'
-            return 'GOOD EVENING'
-        },
-        hasAnnouncements() {
-            return this.weeklyAnnouncement.length > 0 || this.upcomingEvents.length > 0
-        }
     },
 
     watch: {
-        // Re-check overflow whenever announcements update
         weeklyAnnouncement() {
             this.$nextTick(() => this.checkOverflow())
         }
     },
 
     mounted() {
-        // Clock ticker — updates every second
-        this.timer = setInterval(() => {
-            this.currentTime = new Date()
-        }, 1000)
-
         this.$nextTick(() => this.checkOverflow())
     },
 
-    beforeUnmount() {
-        clearInterval(this.timer)
-    },
-
     methods: {
-        // Compares panel height to wrapper height
-        // If panel is taller than wrapper — enable scroll animation
         checkOverflow() {
             const wrapper = this.$refs.scrollWrapper
             const panel = this.$refs.panel
@@ -232,10 +173,133 @@ export default {
 </script>
 
 <style scoped>
+/* Main Container */
+.announcement-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    overflow: hidden;
+}
+
+/* Poster Section */
+.poster-section {
+    flex-shrink: 0;
+    background: #fff;
+}
+
+.poster-image {
+    width: 100%;
+    height: 100%;
+    max-height: 55vh;
+    object-position: top;
+}
+
+.poster-fallback {
+    height: 55vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+}
+
+.fallback-text {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+/* UI Elements */
+.section-divider {
+    height: 2px;
+    background: #e0e0e0;
+    flex-shrink: 0;
+}
+
+.label-wrapper {
+    flex-shrink: 0;
+    padding: 10px 16px 4px;
+}
+
+.main-title {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #00611e;
+    /* BMA Green */
+    letter-spacing: 1px;
+}
+
+/* Scroller Logic */
+.scroll-wrapper {
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+    padding: 0 16px;
+}
+
+.scroll-panel {
+    /* Ensuring panels are consistent for the loop */
+    display: block;
+}
+
+/* Content Styling */
+.day-group {
+    margin-bottom: 12px;
+}
+
+.day-label {
+    margin: 0 0 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #555;
+    text-transform: uppercase;
+}
+
 .schedule-item {
-    background-color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 8px;
+    /* Added slight spacing between event blocks */
+}
+
+.event-title {
+    margin: 0;
+    font-weight: 600;
+    color: #1a1a1a;
+    font-size: 0.9rem;
+}
+
+.event-content {
+    margin: 0;
+    color: #444;
+    font-size: 0.82rem;
+}
+
+.no-events-text,
+.empty-state-text {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #888;
+}
+
+/* Upcoming Events Section */
+.upcoming-section {
+    margin-top: 8px;
+}
+
+.upcoming-title {
+    margin: 0 0 6px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1a1a1a;
+}
+
+.schedule-item {
+    background-color: #f9f9f9;
     border-left: 3px solid #00611E;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    padding: 6px 10px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .scroll-track {
@@ -253,6 +317,7 @@ export default {
     0% {
         transform: translateY(0);
     }
+
     100% {
         transform: translateY(-50%);
     }

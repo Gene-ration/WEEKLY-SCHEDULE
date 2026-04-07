@@ -1,13 +1,32 @@
 <template>
-    <div style="height:100vh; width:100%; background:#000; padding:12px; box-sizing:border-box;">
-        <div style="height:100%; width:100%; border-radius:16px; overflow:hidden; position:relative;">
-
-            <!-- ── YouTube Player — shown only when current video is a YouTube URL ── -->
+    <div style="height:100vh; display:flex; flex-direction:column; background:#fff;">
+ 
+        <!-- ── Logo Header ────────────────────────────────────────────────────── -->
+        <div class="logoHeader">
+            <img src="/Image/bma-logo.png" alt="Logo" class="logo" />
+            <span class="textLogo">Baliwag Maritime Academy</span>
+            <span class="textDesc">Knowledge · Discipline · Excellence</span>
+        </div>
+ 
+        <!-- ── Video Player (fills remaining space) ───────────────────────────── -->
+        <div class="videoPlayer">
+ 
+            <!-- YouTube Player -->
             <div v-show="isYouTube" id="yt-player" style="height:100%; width:100%;"></div>
-
-            <!-- ── Native Player — shown for direct mp4 / webm / any non-YouTube URL ── -->
+ 
+            <!-- Google Drive Player — iframe embed with autoplay -->
+            <iframe
+                v-show="isGDrive"
+                ref="gdrivePlayer"
+                :src="gdriveEmbedUrl"
+                style="height:100%; width:100%; border:none; background:#000;"
+                allow="autoplay; fullscreen"
+                allowfullscreen
+            ></iframe>
+ 
+            <!-- Native Player (mp4 / webm / direct URLs) -->
             <video
-                v-show="!isYouTube"
+                v-show="isDirectVideo"
                 ref="nativePlayer"
                 style="height:100%; width:100%; object-fit:contain; background:#000;"
                 autoplay
@@ -15,43 +34,50 @@
                 @timeupdate="onNativeTimeUpdate"
                 @loadedmetadata="onNativeMetadata"
             ></video>
-
-            <!-- Loading overlay on top -->
-            <div v-if="loading"
-                style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#000;">
-                <p style="color:white;">Loading playlist...</p>
+ 
+            <!-- Loading overlay -->
+            <div v-if="loading" class="loading">
+                <p style="color:white; font-size:1rem;">Loading playlist...</p>
             </div>
-
+ 
             <!-- Now Playing Info -->
-            <div v-if="currentFile" style="position:absolute; bottom:16px; left:16px; background:rgba(0,0,0,0.6); color:white;
-                padding:6px 12px; border-radius:8px; font-size:0.8rem;">
+            <div v-if="currentFile" class="nowPlaying">
                 🎬 {{ currentFile.title }} &nbsp;|&nbsp; {{ currentTimeDisplay }} / {{ durationDisplay }}
                 &nbsp;|&nbsp; {{ currentVideoIndex + 1 }} / {{ playList.length }}
-                &nbsp;|&nbsp;
-                <span style="font-size:0.7rem; opacity:0.8;">{{ isYouTube ? '▶ YouTube' : '▶ Direct' }}</span>
+                &nbsp;|&nbsp; {{ videoTypeLabel }}
             </div>
-
+ 
         </div>
+ 
+        <!-- ── Date & Time Bar ───────────────────────────── -->
+        <div class="dtBar">
+            <div>
+                <p style="margin:0; font-size:0.9rem; font-weight:700; letter-spacing:1px;">{{ formattedDate }}</p>
+                <p style="margin:0; font-size:2rem; font-weight:800; line-height:1.1;">{{ formattedTime }}</p>
+            </div>
+            <p style="margin:0; font-size:0.9rem; font-weight:700; letter-spacing:1px;">{{ timeStatus }}</p>
+        </div>
+ 
     </div>
 </template>
-
+ 
 <script>
 export default {
     name: "VideoPlaylist",
-
+ 
     emits: ['video-ended'],
-
+ 
     props: {
         playList: {
             type: Array,
             required: true
         }
     },
-
+ 
     data() {
         return {
             currentVideoIndex: 0,
-            player: null,
+            player: null,               // YouTube IFrame player instance
             loading: true,
             refreshTimer: null,
             apiReady: false,
@@ -59,28 +85,67 @@ export default {
             duration: 0,
             timePollingInterval: null,
             lastVideoType: null,
+            gdriveTimer: null,
+            gdriveStartTime: null,
+            currentTime_clock: new Date(),
+            clockTimer: null,
         }
     },
-
+ 
     computed: {
         currentFile() {
             return this.playList[this.currentVideoIndex] || null
         },
-
+ 
         isYouTube() {
-            return this.currentFile
-                ? this.detectVideoType(this.currentFile.url) === 'youtube'
-                : false
+            return this.detectVideoType(this.currentFile?.url) === 'youtube'
         },
-
+        isGDrive() {
+            return this.detectVideoType(this.currentFile?.url) === 'gdrive'
+        },
+        isDirectVideo() {
+            return this.detectVideoType(this.currentFile?.url) === 'direct'
+        },
+ 
+        gdriveEmbedUrl() {
+            if (!this.isGDrive || !this.currentFile?.url) return ''
+            const fileId = this.extractGDriveId(this.currentFile.url)
+            return fileId
+                ? `https://drive.google.com/file/d/${fileId}/view?autoplay=1`
+                : ''
+        },
+ 
+        videoTypeLabel() {
+            if (this.isYouTube) return 'YouTube'
+            if (this.isGDrive) return 'Google Drive'
+            return 'Direct'
+        },
+ 
         currentTimeDisplay() {
             return this.formatTime(this.currentTime)
         },
         durationDisplay() {
             return this.formatTime(this.duration)
         },
+ 
+        formattedDate() {
+            return this.currentTime_clock.toLocaleDateString('en-US', {
+                month: 'long', day: 'numeric', year: 'numeric'
+            }).toUpperCase()
+        },
+        formattedTime() {
+            return this.currentTime_clock.toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit', hour12: true
+            })
+        },
+        timeStatus() {
+            const hour = this.currentTime_clock.getHours()
+            if (hour < 12) return 'GOOD MORNING'
+            if (hour < 18) return 'GOOD AFTERNOON'
+            return 'GOOD EVENING'
+        }
     },
-
+ 
     watch: {
         playList: {
             immediate: true,
@@ -88,16 +153,14 @@ export default {
                 console.log('[playList watcher] received:', newVal)
                 if (newVal && newVal.length > 0) {
                     console.log(`[playList watcher] ${newVal.length} video(s) loaded — starting player`)
-                    this.$nextTick(() => {
-                        this.loadCurrentVideo()
-                    })
+                    this.$nextTick(() => this.loadCurrentVideo())
                 } else {
                     console.warn('[playList watcher] Playlist is empty or not yet loaded')
                 }
             }
         }
     },
-
+ 
     mounted() {
         const savedIndex = localStorage.getItem("playIndex")
         if (savedIndex !== null) {
@@ -106,217 +169,285 @@ export default {
         } else {
             console.log('[Mounted] No saved index — starting from 0')
         }
-
+ 
+        this.clockTimer = setInterval(() => {
+            this.currentTime_clock = new Date()
+        }, 1000)
+ 
         this.startRefreshInterval()
     },
-
+ 
     beforeUnmount() {
         clearInterval(this.refreshTimer)
         clearInterval(this.timePollingInterval)
-
+        clearInterval(this.clockTimer)
+        clearInterval(this.gdriveTimer)
+ 
         if (this.player) {
             this.player.destroy()
             console.log('[beforeUnmount] YouTube player destroyed')
         }
     },
-
+ 
     methods: {
-
+ 
         // ── Video Type Detection ─────────────────────────────────
-
         detectVideoType(url) {
             if (!url) return null
-            const isYT = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)/.test(url)
-            return isYT ? 'youtube' : 'direct'
+            if (/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)/.test(url)) return 'youtube'
+            if (/drive\.google\.com/.test(url)) return 'gdrive'
+            return 'direct'
         },
 
+        extractGDriveId(url) {
+            if (!url) return null
+ 
+            // Format: /file/d/FILE_ID/view  or  /file/d/FILE_ID/preview
+            const fileMatch = url.match(/\/file\/d\/([^/?\s]+)/)
+            if (fileMatch) return fileMatch[1]
+ 
+            // Format: ?id=FILE_ID  or  &id=FILE_ID
+            const idMatch = url.match(/[?&]id=([^&\s]+)/)
+            if (idMatch) return idMatch[1]
+ 
+            console.warn('[extractGDriveId] Could not extract ID from URL:', url)
+            return null
+        },
+ 
         // ── Main Entry Point ─────────────────────────────────────
-
+ 
         loadCurrentVideo() {
             if (!this.playList || this.playList.length === 0) {
                 console.warn('[loadCurrentVideo] Playlist is empty.')
                 return
             }
-
+ 
             if (this.currentVideoIndex >= this.playList.length) {
                 console.warn(`[loadCurrentVideo] Index ${this.currentVideoIndex} out of range — resetting to 0`)
                 this.currentVideoIndex = 0
                 localStorage.setItem("playIndex", 0)
             }
-
+ 
             const type = this.detectVideoType(this.currentFile?.url)
             console.log(`[loadCurrentVideo] type: ${type} | lastType: ${this.lastVideoType} | title: "${this.currentFile?.title}"`)
-
+ 
+            // Stop whichever player was previously active
+            this.stopAllPlayers(type)
+ 
             if (type === 'youtube') {
-
-                this.stopNativePlayer()
                 this.loadYouTubeAPI()
-
+            } else if (type === 'gdrive') {
+                this.loadGDriveVideo()
             } else if (type === 'direct') {
-
-                if (this.lastVideoType === 'youtube') {
-                    this.destroyYouTubePlayer()
-                } else {
-                    this.stopYouTubePlayer()
-                }
                 this.loadDirectVideo()
             } else {
-                console.warn('[loadCurrentVideo] Unknown video type for URL:', this.currentFile?.url)
+                console.warn('[loadCurrentVideo] Unknown video type:', this.currentFile?.url)
             }
-
+ 
             this.lastVideoType = type
         },
-
-        // ── YouTube Player ───────────────────────────────────────
-
-        loadYouTubeAPI() {
-            if (!this.playList || this.playList.length === 0) {
-                console.warn('[loadYouTubeAPI] Playlist is empty.')
-                return
+ 
+        stopAllPlayers(incomingType) {
+            // Stop native video
+            this.stopNativePlayer()
+ 
+            // Stop GDrive timer
+            this.stopGDrivePlayer()
+ 
+            // Destroy YouTube player fully if switching away from it
+            if (this.lastVideoType === 'youtube' && incomingType !== 'youtube') {
+                this.destroyYouTubePlayer()
+            } else if (this.lastVideoType === 'youtube') {
+                this.stopYouTubePlayer()
             }
-
-            console.log(`[loadYouTubeAPI] ${this.playList.length} video(s) in playlist`, this.playList)
-
+        },
+ 
+        // ── YouTube Player ───────────────────────────────────────
+ 
+        loadYouTubeAPI() {
             if (window.YT && window.YT.Player) {
-                console.log('[loadYouTubeAPI] YouTube API already loaded — initializing player')
                 this.apiReady = true
                 this.initPlayer()
                 return
             }
-
-            console.log('[loadYouTubeAPI] Injecting YouTube IFrame API script...')
+ 
             const tag = document.createElement("script")
             tag.src = "https://www.youtube.com/iframe_api"
             document.body.appendChild(tag)
-
+ 
             window.onYouTubeIframeAPIReady = () => {
                 console.log('[onYouTubeIframeAPIReady] YouTube API is ready')
                 this.apiReady = true
                 this.initPlayer()
             }
         },
-
+ 
         initPlayer() {
-            if (!this.apiReady) {
-                console.warn('[initPlayer] API not ready yet — aborting')
-                return
-            }
-
+            if (!this.apiReady) return
+ 
             if (this.currentVideoIndex >= this.playList.length) {
-                console.warn(`[initPlayer] Index ${this.currentVideoIndex} out of range — resetting to 0`)
                 this.currentVideoIndex = 0
                 localStorage.setItem("playIndex", 0)
             }
-
+ 
             if (!this.currentFile || !this.currentFile.url) {
                 console.warn("[initPlayer] No video found in playlist.")
                 return
             }
-
-            const firstVideoId = this.extractVideoId(this.currentFile.url)
-            console.log(`[initPlayer] Starting video — title: "${this.currentFile.title}" | id: ${firstVideoId}`)
-
-            if (!firstVideoId) {
+ 
+            const videoId = this.extractVideoId(this.currentFile.url)
+            if (!videoId) {
                 console.warn("[initPlayer] Invalid YouTube URL:", this.currentFile.url)
                 return
             }
-
-            // If player already exists, just swap the video — no need to recreate
+ 
             if (this.player) {
                 console.log('[initPlayer] Player already exists — loading new video')
-                this.player.loadVideoById(firstVideoId)
+                this.player.loadVideoById(videoId)
                 this.loading = false
+                this.waitForDurationAfterLoad()
                 return
             }
-
+ 
             this.player = new YT.Player("yt-player", {
-                videoId: firstVideoId,
-                playerVars: {
-                    autoplay: 1,
-                    /* mute: 1, */
-                    origin: window.location.origin
-                },
+                videoId,
+                playerVars: { autoplay: 1, origin: window.location.origin },
                 events: {
                     onReady: (event) => {
                         this.loading = false
                         this.duration = event.target.getDuration()
-                        console.log(`[onReady] Player ready — title: "${this.currentFile.title}" | duration: ${this.duration}s (${Math.floor(this.duration / 60)}m ${Math.floor(this.duration % 60)}s)`)
-
-                        clearInterval(this.timePollingInterval)
-                        this.timePollingInterval = setInterval(() => {
-                            if (this.player && this.player.getCurrentTime) {
-                                this.currentTime = Math.floor(this.player.getCurrentTime())
-                            }
-                        }, 1000)
+                        console.log(`[onReady] title: "${this.currentFile?.title}" | duration: ${this.duration}s`)
+                        this.startTimePolling()
                     },
                     onStateChange: this.onPlayerStateChange
                 }
             })
         },
-
+ 
+        waitForDurationAfterLoad() {
+            clearInterval(this.timePollingInterval)
+            let attempts = 0
+ 
+            this.timePollingInterval = setInterval(() => {
+                if (!this.player || !this.player.getDuration) return
+                const dur = this.player.getDuration()
+                attempts++
+ 
+                if (dur > 0) {
+                    this.duration = Math.floor(dur)
+                    this.currentTime = Math.floor(this.player.getCurrentTime())
+                    clearInterval(this.timePollingInterval)
+                    this.startTimePolling()
+                } else if (attempts >= 30) {
+                    clearInterval(this.timePollingInterval)
+                    this.startTimePolling()
+                }
+            }, 100)
+        },
+ 
+        startTimePolling() {
+            clearInterval(this.timePollingInterval)
+            this.timePollingInterval = setInterval(() => {
+                if (this.player && this.player.getCurrentTime) {
+                    this.currentTime = Math.floor(this.player.getCurrentTime())
+                    if (this.duration === 0 && this.player.getDuration) {
+                        const dur = this.player.getDuration()
+                        if (dur > 0) this.duration = Math.floor(dur)
+                    }
+                }
+            }, 1000)
+        },
+ 
+        onPlayerStateChange(event) {
+            const states = { '-1': 'unstarted', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'cued' }
+            console.log(`[onStateChange] ${states[event.data] || event.data}`)
+            if (event.data === YT.PlayerState.ENDED) this.playNext()
+        },
+ 
         stopYouTubePlayer() {
             clearInterval(this.timePollingInterval)
             if (this.player) {
-                try {
-                    this.player.stopVideo()
-                    this.player.mute()  
-                } catch (e) { /* ignore */ }
+                try { this.player.stopVideo(); this.player.mute() } catch (e) { }
             }
             this.currentTime = 0
             this.duration = 0
         },
-
+ 
         destroyYouTubePlayer() {
             clearInterval(this.timePollingInterval)
             if (this.player) {
-                try {
-                    this.player.stopVideo()
-                    this.player.destroy()
-                    console.log('[destroyYouTubePlayer] YouTube player fully destroyed')
-                } catch (e) { /* ignore */ }
+                try { this.player.stopVideo(); this.player.destroy() } catch (e) { }
                 this.player = null
-                this.apiReady = false 
+                this.apiReady = false
             }
             this.currentTime = 0
             this.duration = 0
         },
+ 
+        // ── Google Drive Player ──────────────────────────────────
+        loadGDriveVideo() {
+            this.loading = false
+            this.currentTime = 0
 
+            this.duration = this.currentFile?.duration || 0
+ 
+            console.log(`[loadGDriveVideo] title: "${this.currentFile?.title}" | embed: ${this.gdriveEmbedUrl} | duration: ${this.duration}s`)
+ 
+            this.gdriveStartTime = Date.now()
+ 
+            // Start wall-clock counter for currentTime display
+            clearInterval(this.gdriveTimer)
+            this.gdriveTimer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - this.gdriveStartTime) / 1000)
+                this.currentTime = elapsed
+
+                if (this.duration > 0 && elapsed >= this.duration) {
+                    console.log(`[GDrive] Duration reached (${this.duration}s) — advancing to next video`)
+                    clearInterval(this.gdriveTimer)
+                    this.playNext()
+                }
+            }, 1000)
+        },
+ 
+        stopGDrivePlayer() {
+            clearInterval(this.gdriveTimer)
+            this.gdriveTimer = null
+            this.gdriveStartTime = null
+ 
+            // Blank out the iframe src to stop playback
+            const iframe = this.$refs.gdrivePlayer
+            if (iframe) iframe.src = ''
+ 
+            this.currentTime = 0
+            this.duration = 0
+        },
+ 
         // ── Direct / Native Video Player ─────────────────────────
-
+ 
         loadDirectVideo() {
             this.$nextTick(() => {
                 const video = this.$refs.nativePlayer
-                if (!video) {
-                    console.warn('[loadDirectVideo] Native player ref not found')
-                    return
-                }
-
+                if (!video) return
                 console.log(`[loadDirectVideo] Loading: ${this.currentFile.url}`)
                 video.src = this.currentFile.url
                 video.load()
-                video.play().catch(err => {
-                    console.warn('[loadDirectVideo] Autoplay blocked:', err)
-                })
-
+                video.play().catch(err => console.warn('[loadDirectVideo] Autoplay blocked:', err))
                 this.loading = false
             })
         },
-
+ 
         stopNativePlayer() {
             const video = this.$refs.nativePlayer
-            if (video) {
-                video.pause()
-                video.src = ''
-            }
+            if (video) { video.pause(); video.src = '' }
             this.currentTime = 0
             this.duration = 0
         },
-
+ 
         onNativeTimeUpdate() {
             const video = this.$refs.nativePlayer
             if (video) this.currentTime = Math.floor(video.currentTime)
         },
-
+ 
         onNativeMetadata() {
             const video = this.$refs.nativePlayer
             if (video) {
@@ -324,73 +455,149 @@ export default {
                 console.log(`[Native onMetadata] title: "${this.currentFile?.title}" | duration: ${this.duration}s`)
             }
         },
-
-        // ── Player Events ────────────────────────────────────────
-
-        onPlayerStateChange(event) {
-            const states = { '-1': 'unstarted', 0: 'ended', 1: 'playing', 2: 'paused', 3: 'buffering', 5: 'cued' }
-            console.log(`[onStateChange] State changed: ${states[event.data] || event.data}`)
-
-            if (event.data === YT.PlayerState.ENDED) {
-                this.playNext()
-            }
-        },
-
+ 
         // ── Playlist Controls ────────────────────────────────────
-
+ 
         playNext() {
             if (!this.playList.length) return
-
+ 
             this.$emit('video-ended')
-            console.log('[playNext] emitted video-ended to parent')
-
             this.currentTime = 0
             this.duration = 0
             clearInterval(this.timePollingInterval)
-
+            clearInterval(this.gdriveTimer)
+ 
             const prevIndex = this.currentVideoIndex
             this.currentVideoIndex = (this.currentVideoIndex + 1) % this.playList.length
             localStorage.setItem("playIndex", this.currentVideoIndex)
-
-            console.log(`[playNext] ${prevIndex + 1} → ${this.currentVideoIndex + 1} of ${this.playList.length} | title: "${this.currentFile?.title}"`)
-
+ 
+            console.log(`[playNext] ${prevIndex + 1} → ${this.currentVideoIndex + 1} of ${this.playList.length}`)
             this.loadCurrentVideo()
         },
-
+ 
         // ── Helpers ──────────────────────────────────────────────
-
+ 
         extractVideoId(url) {
             if (!url) return null
-
-            const regExp = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^?&]+)/
-            const match = url.match(regExp)
-
-            if (!match) {
-                console.warn('[extractVideoId] Could not extract ID from URL:', url)
-                return null
-            }
-
-            return match[1]
+            const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^?&]+)/)
+            return match ? match[1] : null
         },
-
+ 
         formatTime(seconds) {
             const s = Math.floor(seconds)
             const m = Math.floor(s / 60)
             const h = Math.floor(m / 60)
-            if (h > 0) {
-                return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
-            }
+            if (h > 0) return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
             return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
         },
-
+ 
         startRefreshInterval() {
             const intervalMs = (60 * 60 * 1000) / (this.playList.length || 1)
-            console.log(`[startRefreshInterval] Refresh interval set to every ${Math.round(intervalMs / 1000 / 60)} min`)
-
             this.refreshTimer = setInterval(() => {
-                console.log(`[Refresh] Playlist active — ${this.playList.length} video(s) | now playing: "${this.currentFile?.title}"`)
+                console.log(`[Refresh] ${this.playList.length} video(s) | now playing: "${this.currentFile?.title}"`)
             }, intervalMs)
         }
     }
 }
 </script>
+
+<style scoped>
+@font-face {
+    font-family: 'AllrounderMonumentTest-Medium';
+    src: url(./src/assets/AllrounderMonumentTest-Medium.otf) format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.announcement-wrapper {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+.logoHeader {
+    flex-direction: column;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 9px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.videoPlayer {
+    flex-grow: 1;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+}
+
+.nowPlaying {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+}
+
+.loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+.logoWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logo {
+    width: 50px;
+}
+
+.textLogo {
+    font-family: 'AllrounderMonumentTest-Medium', sans-serif;
+    color: #00611E;
+}
+
+.textDesc {
+    font-family: 'AllrounderMonumentTest-Medium', sans-serif;
+    color: #00611E;
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    word-spacing: 2em;
+    text-transform: uppercase;
+}
+
+.dtBar {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    background: #00611E;
+    color: #fff;
+    padding: 25px 20px;
+    display: flex;
+    align-items: normal;
+    letter-spacing: 0.30em;
+    justify-content: space-between;
+}
+
+.dateStatus {
+    margin: 0;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+}
+
+.time {
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1.1;
+}
+</style>

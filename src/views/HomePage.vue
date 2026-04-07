@@ -1,35 +1,26 @@
 <template>
-    <div class="row ma-0" style="height:100vh; overflow:hidden; width:100%; position:relative; background:#fff;">
+    <div class="homepage-wrapper">
 
         <!-- ── Full Screen Splash Overlay ────────────────────────────────────── -->
         <transition name="fade">
-            <div v-if="splashVisible" style="
-                    position:fixed;
-                    inset:0;
-                    z-index:9999;
-                    background:#000;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;">
-                <img v-if="splashImage" :src="splashImage" style="max-width:100%; max-height:100%; object-fit:contain;" />
+            <div v-if="splashVisible" class="splash-overlay">
+                <img v-if="splashImage" :src="splashImage"
+                    style="max-width:100%; max-height:100%; object-fit:contain;" />
             </div>
         </transition>
 
-        <!-- ── Video Player Column (60%) ─────────────────────────────────────── -->
-        <div class="col-md-7 pa-0" style="height:100vh; position:relative;" v-show="!splashVisible">
+        <!-- ── Left Column (50%) — Logo + Video + Date/Time ──────────────────── -->
+        <div v-show="!splashVisible"
+            style="width:50%; height:100vh; display:flex; flex-direction:column; background:#fff;">
             <VideoPlaylist @video-ended="showSplash" :playList="playlist" />
         </div>
 
-        <!-- ── Right Column (40%) — Announcement ─────────────────────────────── -->
-        <div class="col-md-5 pa-0" style="height:100vh; display:flex; flex-direction:column;" v-show="!splashVisible">
-
-            <!-- ── Announcemevvvvvdnt Panel ───────────────────────────────────────────── -->
-            <div style="flex-grow:1; overflow:hidden;">
-                <!-- ✅ Pass splashImage down to Announcement for the preview at the top -->
-                <Announcement :announcementList="announcementList" :splashImage="splashImage" />
-            </div>
-
+        <!-- ── Right Column (50%) — Monthly Poster + Announcements ──────────── -->
+        <div v-show="!splashVisible"
+            style="width:50%; height:100vh; display:flex; flex-direction:column; border-left:1px solid #e0e0e0;">
+            <Announcement :announcementList="announcementList" :splashImage="splashImage" />
         </div>
+
     </div>
 </template>
 
@@ -48,7 +39,7 @@ export default {
         return {
             playlist: [],
             announcementList: [],
-            splashImage: null,        
+            splashImage: null,
             splashVisible: true,
             splashTimer: null,
             showPreview: false,
@@ -59,7 +50,6 @@ export default {
     },
     methods: {
 
-        // ── showSplash ────────────────────────────────────────────────────────
         showSplash() {
             this.showPreview = false
             this.splashVisible = true
@@ -74,7 +64,6 @@ export default {
             }, 5000)
         },
 
-        // ── fetchData ─────────────────────────────────────────────────────────
         async fetchData() {
             try {
                 const response = await api.get('/showData');
@@ -82,7 +71,7 @@ export default {
 
                 console.log('[fetchData] raw links:', data.links)
                 console.log('[fetchData] raw announcements:', data.announcements)
-                console.log('[fetchData] raw monthlyPoster:', data.monthlyPosters)
+                console.log('[fetchData] raw monthlyPosters:', data.monthlyPosters)
                 console.log('[fetchData] full response:', data)
 
                 this.splashImage = data.monthlyPosters?.url || null
@@ -125,22 +114,31 @@ body {
     background: #ffffff;
 }
 
+.homepage-wrapper {
+    height: 100vh;
+    overflow: hidden;
+    width: 100%;
+    display: flex;
+    background: #fff;
+}
+
+.splash-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .fade-enter-active,
 .fade-leave-active {
     transition: opacity 0.5s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
-}
-
-.preview-fade-enter-active,
-.preview-fade-leave-active {
-    transition: opacity 0.4s ease, transform 0.4s ease;
-}
-.preview-fade-enter-from,
-.preview-fade-leave-to {
-    opacity: 0;
-    transform: scale(0.85);
 }
 </style>
