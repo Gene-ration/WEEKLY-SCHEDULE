@@ -1,23 +1,22 @@
 <template>
+    <!-- ── Full Screen Splash Overlay ────────────────────────────────────── -->
+    <transition name="fade">
+        <div v-if="splashVisible" class="splash-overlay">
+            <img v-if="splashImage" :src="splashImage" style="width:100%; height:100%; object-fit:contain;" />
+        </div>
+    </transition>
+
     <div class="homepage-wrapper">
 
-        <!-- ── Full Screen Splash Overlay ────────────────────────────────────── -->
-        <transition name="fade">
-            <div v-if="splashVisible" class="splash-overlay">
-                <img v-if="splashImage" :src="splashImage"
-                    style="max-width:100%; max-height:100%; object-fit:contain;" />
-            </div>
-        </transition>
-
-        <!-- ── Left Column (50%) — Logo + Video + Date/Time ──────────────────── -->
+        <!-- ── Left Column (60%) — Logo + Video + Date/Time ──────────────────── -->
         <div v-show="!splashVisible"
-            style="width:50%; height:100vh; display:flex; flex-direction:column; background:#fff;">
+            style="width:60%; height:100vh; display:flex; flex-direction:column; background:#fff;">
             <VideoPlaylist @video-ended="showSplash" :playList="playlist" />
         </div>
 
-        <!-- ── Right Column (50%) — Monthly Poster + Announcements ──────────── -->
+        <!-- ── Right Column (40%) — Monthly Poster + Announcements ──────────── -->
         <div v-show="!splashVisible"
-            style="width:50%; height:100vh; display:flex; flex-direction:column; border-left:1px solid #e0e0e0;">
+            style="width:40%; height:100vh; display:flex; flex-direction:column; border-left:1px solid #e0e0e0;">
             <Announcement :announcementList="announcementList" :splashImage="splashImage" />
         </div>
 
@@ -115,7 +114,7 @@ body {
 }
 
 .homepage-wrapper {
-    height: 100vh;
+    height: 100%;
     overflow: hidden;
     width: 100%;
     display: flex;
