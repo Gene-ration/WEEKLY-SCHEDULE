@@ -213,8 +213,8 @@ export default {
                 }
             })
         },
+        
         // ── Video Ended ────────────────────────────────────────────
-
         onVideoEnded() {
             if (!this.queue.length) return
 
@@ -227,7 +227,6 @@ export default {
         },
 
         // ── Stop Everything ────────────────────────────────────────
-
         stopAll() {
             clearInterval(this.timePollingInterval)
             this.timePollingInterval = null
@@ -252,7 +251,6 @@ export default {
         },
 
         // ── YouTube ────────────────────────────────────────────────
-
         initYouTube(item) {
             const videoId = this.extractYouTubeId(item.url)
             if (!videoId) {
@@ -325,7 +323,6 @@ export default {
         },
 
         // ── Direct Video ───────────────────────────────────────────
-
         loadDirectVideo(item) {
             const v = this.$refs.nativePlayer
             if (!v) {
@@ -350,7 +347,6 @@ export default {
         },
 
         // ── Native Video Events ────────────────────────────────────
-
         onNativeTimeUpdate() {
             const v = this.$refs.nativePlayer
             if (v) this.currentTime = Math.floor(v.currentTime)
@@ -373,7 +369,6 @@ export default {
         },
 
         // ── Helpers ───────────────────────────────────────────────
-
         extractYouTubeId(url) {
             if (!url) return null
             const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^?&]+)/)
@@ -400,7 +395,7 @@ export default {
 <style scoped>
 @font-face {
     font-family: 'AllrounderMonumentTest-Medium';
-    src: url(./src/assets/AllrounderMonumentTest-Medium.otf) format('opentype');
+    src: url(./public/assets/AllrounderMonumentTest-Medium.otf) format('opentype');
     font-weight: normal;
     font-style: normal;
 }

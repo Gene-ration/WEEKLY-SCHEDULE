@@ -44,7 +44,6 @@ export default {
             splashImage:      null,
             splashVisible:    true,
             splashTimer:      null,
-            // ✅ The next index to play — set when a video ends, consumed after splash
             pendingIndex:     null,
         }
     },
