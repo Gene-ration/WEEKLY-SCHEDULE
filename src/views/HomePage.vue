@@ -8,17 +8,17 @@
 
     <div class="homepage-wrapper">
 
-        <!-- ── Left Column (60%) — Logo + Video + Date/Time ──────────────────── -->
+        <!-- ── Left Column (60%) ─────────────────────────────────────────────── -->
         <div v-show="!splashVisible"
             style="width:60%; height:100vh; display:flex; flex-direction:column; background:#fff;">
             <VideoPlaylist
-                @video-ended="showSplash"
+                ref="videoPlaylist"
+                @video-ended="onVideoEnded"
                 :playList="playlist"
-                :splashVisible="splashVisible"
             />
         </div>
 
-        <!-- ── Right Column (40%) — Monthly Poster + Announcements ──────────── -->
+        <!-- ── Right Column (40%) ────────────────────────────────────────────── -->
         <div v-show="!splashVisible"
             style="width:40%; height:100vh; display:flex; flex-direction:column; border-left:1px solid #e0e0e0;">
             <Announcement :announcementList="announcementList" :splashImage="splashImage" />
@@ -29,25 +29,23 @@
 
 <script>
 import VideoPlaylist from '@/components/VideoPlaylist.vue'
-import Announcement from '@/components/Announcement.vue'
-import api from '../api';
+import Announcement  from '@/components/Announcement.vue'
+import api           from '../api'
 
 export default {
     name: 'HomePage',
 
-    components: {
-        VideoPlaylist,
-        Announcement,
-    },
+    components: { VideoPlaylist, Announcement },
 
     data() {
         return {
-            playlist:       [],
+            playlist:         [],
             announcementList: [],
-            splashImage:    null,
-            splashVisible:  true,
-            splashTimer:    null,
-            showPreview:    false,
+            splashImage:      null,
+            splashVisible:    true,
+            splashTimer:      null,
+            // ✅ The next index to play — set when a video ends, consumed after splash
+            pendingIndex:     null,
         }
     },
 
@@ -60,17 +58,25 @@ export default {
     },
 
     methods: {
-        showSplash() {
-            this.showPreview  = false
+
+        onVideoEnded(nextIndex) {
+            console.log(`[HomePage] video-ended — queuing index ${nextIndex} after splash`)
+
+            this.pendingIndex  = nextIndex
             this.splashVisible = true
 
             if (this.splashTimer) clearTimeout(this.splashTimer)
 
+            // After 5 seconds hide splash and tell VideoPlaylist to play the next index
             this.splashTimer = setTimeout(() => {
-                if (this.playlist.length || this.announcementList.length) {
-                    this.splashVisible = false
-                    this.showPreview   = true
-                }
+                this.splashVisible = false
+                this.$nextTick(() => {
+                    if (this.pendingIndex !== null) {
+                        console.log(`[HomePage] Splash done — playing index ${this.pendingIndex}`)
+                        this.$refs.videoPlaylist?.playItem(this.pendingIndex)
+                        this.pendingIndex = null
+                    }
+                })
             }, 5000)
         },
 
@@ -79,10 +85,9 @@ export default {
                 const response = await api.get('/showData')
                 const data     = response.data
 
-                console.log('[fetchData] raw links:',        data.links)
+                console.log('[fetchData] raw links:',         data.links)
                 console.log('[fetchData] raw announcements:', data.announcements)
                 console.log('[fetchData] raw monthlyPosters:', data.monthlyPosters)
-                console.log('[fetchData] full response:',    data)
 
                 this.splashImage = data.monthlyPosters?.url || null
 
@@ -99,7 +104,6 @@ export default {
 
                 if (this.playlist.length || this.announcementList.length) {
                     this.splashVisible = false
-                    this.showPreview   = true
                 }
 
             } catch (e) {
